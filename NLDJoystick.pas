@@ -1,3 +1,19 @@
+{ **************************************************************************** }
+{                                                                              }
+{ NLDJoystick  -  www.nldelphi.com Open Source Delphi designtime component     }
+{                                                                              }
+{ Initiator: Albert de Weerd (aka NGLN)                                        }
+{ License: Free to use, free to modify                                         }
+{ Website: http://www.nldelphi.com/Forum/showthread.php?t=29812                }
+{ SVN repository: http://svn.nldelphi.com/nldelphi/opensource/ngln/NLDJoystick }
+{                                                                              }
+{ **************************************************************************** }
+{                                                                              }
+{ Date:  April 28, 2008                                                        }
+{ Version:  1.0.0.2                                                            }
+{                                                                              }
+{ **************************************************************************** }
+
 unit NLDJoystick;
 
 interface
@@ -127,6 +143,7 @@ type
     FRanges: TJoyRanges;
     FRepeatButtonDelay: Cardinal;
     FRepeatMoveDelay: Cardinal;
+    FSuspendScreensaver: Boolean;
     FThreshold: Double;
     FWindowHandle: HWND;
     function GetButtons(const Buttons: Cardinal): TJoyButtons;
@@ -171,6 +188,8 @@ type
       write FRepeatButtonDelay default 350;
     property RepeatMoveDelay: Cardinal read FRepeatMoveDelay
       write FRepeatMoveDelay default 350;
+    property SuspendScreensaver: Boolean read FSuspendScreensaver
+      write FSuspendScreensaver default False;
     property ThresholdFactor: Double read FThreshold write SetThreshold;
   end;
 
@@ -211,6 +230,11 @@ begin
   if FJoystick2 = nil then
     FJoystick2 := TNLDJoystick.Create(nil);
   Result := FJoystick2;
+end;
+
+procedure NotifyKeyboardActivity;
+begin
+  SystemParametersInfo(SPI_SETSCREENSAVEACTIVE, 1, nil, 0);
 end;
 
 { TNLDJoystick }
@@ -258,12 +282,16 @@ procedure TNLDJoystick.DoButtonDown(const Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonDown) then
     FOnButtonDown(Self, Buttons);
+  if FSuspendScreensaver then
+    NotifyKeyboardActivity;
 end;
 
 procedure TNLDJoystick.DoButtonUp(const Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonUp) then
     FOnButtonUp(Self, Buttons);
+  if FSuspendScreensaver then
+    NotifyKeyboardActivity;
 end;
 
 procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos;
@@ -271,12 +299,16 @@ procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos;
 begin
   if Assigned(FOnMove) then
     FOnMove(Self, JoyPos, Buttons);
+  if FSuspendScreensaver then
+    NotifyKeyboardActivity;
 end;
 
 procedure TNLDJoystick.DoPOVChanged(const JoyPOV: Cardinal);
 begin
   if Assigned(FOnPOVChanged) then
     FOnPOVChanged(Self, JoyPOV/100);
+  if FSuspendScreensaver then
+    NotifyKeyboardActivity;
 end;
 
 function TNLDJoystick.GetButtons(const Buttons: Cardinal): TJoyButtons;
