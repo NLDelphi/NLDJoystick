@@ -1,18 +1,18 @@
-{ **************************************************************************** }
-{                                                                              }
-{ NLDJoystick  -  www.nldelphi.com Open Source Delphi designtime component     }
-{                                                                              }
-{ Initiator: Albert de Weerd (aka NGLN)                                        }
-{ License: Free to use, free to modify                                         }
-{ Website: http://www.nldelphi.com/Forum/showthread.php?t=29812                }
-{ SVN repository: http://svn.nldelphi.com/nldelphi/opensource/ngln/NLDJoystick }
-{                                                                              }
-{ **************************************************************************** }
-{                                                                              }
-{ Date:  April 28, 2008                                                        }
-{ Version:  1.0.0.2                                                            }
-{                                                                              }
-{ **************************************************************************** }
+{ *************************************************************************** }
+{                                                                             }
+{ NLDJoystick  -  www.nldelphi.com Open Source Delphi designtime component    }
+{                                                                             }
+{ Initiator: Albert de Weerd (aka NGLN)                                       }
+{ License: Free to use, free to modify                                        }
+{ Website: http://www.nldelphi.com/Forum/showthread.php?t=29812               }
+{ SVN path: http://svn.nldelphi.com/nldelphi/opensource/ngln/NLDJoystick      }
+{                                                                             }
+{ *************************************************************************** }
+{                                                                             }
+{ Date: April 30, 2008                                                        }
+{ Version: 1.0.0.2                                                            }
+{                                                                             }
+{ *************************************************************************** }
 
 unit NLDJoystick;
 
@@ -365,7 +365,8 @@ begin
       FAdvanced := False;
       FHasPOV := False;
       joySetCapture(FWindowHandle, FID, 0, True);
-    end else begin
+    end else
+    begin
       FAdvanced := True;
       if JOYCAPS_HASR and JoyCaps.wCaps = JOYCAPS_HASR then
       begin
@@ -471,7 +472,8 @@ begin
             DoButtonUp(JoyButtons);
           FProcessedButtonOnce := True;
         end;
-      end else begin
+      end else
+      begin
         FPrevButtonTick := CurrentTick;
         FProcessedButtonOnce := False;
       end;
@@ -482,7 +484,8 @@ begin
           DoMove(JoyPos, JoyButtons);
           FProcessedMoveOnce := True;
         end;
-      end else begin
+      end else
+      begin
         FPrevMoveTick := CurrentTick;
         FProcessedMoveOnce := False;
       end;
