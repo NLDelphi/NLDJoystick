@@ -146,21 +146,20 @@ type
     FSuspendScreensaver: Boolean;
     FThreshold: Double;
     FWindowHandle: HWND;
-    function GetButtons(const Buttons: Cardinal): TJoyButtons;
-    function Initialize(const NeedAdvanced: Boolean = False): Boolean;
+    function GetButtons(Buttons: Cardinal): TJoyButtons;
+    function Initialize(NeedAdvanced: Boolean = False): Boolean;
     procedure InitTimer;
     procedure ProcessAdvanced;
     procedure ProcessSimple(var Message: TMMJoyMsg);
-    procedure SetActive(const Value: Boolean);
-    procedure SetAdvanced(const Value: Boolean);
-    procedure SetInterval(const Value: Cardinal);
-    procedure SetThreshold(const Value: Double);
+    procedure SetActive(Value: Boolean);
+    procedure SetAdvanced(Value: Boolean);
+    procedure SetInterval(Value: Cardinal);
+    procedure SetThreshold(Value: Double);
   protected
-    procedure DoButtonDown(const Buttons: TJoyButtons); virtual;
-    procedure DoButtonUp(const Buttons: TJoyButtons); virtual;
-    procedure DoMove(const JoyPos: TJoyRelPos;
-      const Buttons: TJoyButtons); virtual;
-    procedure DoPOVChanged(const JoyPOV: Cardinal); virtual;
+    procedure DoButtonDown(Buttons: TJoyButtons); virtual;
+    procedure DoButtonUp(Buttons: TJoyButtons); virtual;
+    procedure DoMove(JoyPos: TJoyRelPos; Buttons: TJoyButtons); virtual;
+    procedure DoPOVChanged(JoyPOV: Cardinal); virtual;
     procedure WndProc(var Message: TMessage); virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -278,7 +277,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TNLDJoystick.DoButtonDown(const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonDown(Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonDown) then
     FOnButtonDown(Self, Buttons);
@@ -286,7 +285,7 @@ begin
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoButtonUp(const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonUp(Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonUp) then
     FOnButtonUp(Self, Buttons);
@@ -294,8 +293,7 @@ begin
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos;
-  const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoMove(JoyPos: TJoyRelPos; Buttons: TJoyButtons);
 begin
   if Assigned(FOnMove) then
     FOnMove(Self, JoyPos, Buttons);
@@ -303,7 +301,7 @@ begin
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoPOVChanged(const JoyPOV: Cardinal);
+procedure TNLDJoystick.DoPOVChanged(JoyPOV: Cardinal);
 begin
   if Assigned(FOnPOVChanged) then
     FOnPOVChanged(Self, JoyPOV/100);
@@ -311,7 +309,7 @@ begin
     NotifyKeyboardActivity;
 end;
 
-function TNLDJoystick.GetButtons(const Buttons: Cardinal): TJoyButtons;
+function TNLDJoystick.GetButtons(Buttons: Cardinal): TJoyButtons;
 const
   MaxButton: array[Boolean] of TJoyButton = (JoyBtn4, High(TJoyButton));
 var
@@ -323,7 +321,7 @@ begin
       Include(Result, iButton);
 end;
 
-function TNLDJoystick.Initialize(const NeedAdvanced: Boolean = False): Boolean;
+function TNLDJoystick.Initialize(NeedAdvanced: Boolean = False): Boolean;
 var
   JoyInfoEx: TJoyInfoEx;
   JoyCaps: TJoyCaps;
@@ -540,7 +538,7 @@ begin
     end;
 end;
 
-procedure TNLDJoystick.SetActive(const Value: Boolean);
+procedure TNLDJoystick.SetActive(Value: Boolean);
 begin
   if FActive <> Value then
   begin
@@ -555,7 +553,7 @@ begin
   end;
 end;
 
-procedure TNLDJoystick.SetAdvanced(const Value: Boolean);
+procedure TNLDJoystick.SetAdvanced(Value: Boolean);
 begin
   if FAdvanced <> Value then
   begin
@@ -569,7 +567,7 @@ begin
   end;
 end;
 
-procedure TNLDJoystick.SetInterval(const Value: Cardinal);
+procedure TNLDJoystick.SetInterval(Value: Cardinal);
 var
   JoyCaps: TJoyCaps;
 begin
@@ -585,7 +583,7 @@ begin
   end;
 end;
 
-procedure TNLDJoystick.SetThreshold(const Value: Double);
+procedure TNLDJoystick.SetThreshold(Value: Double);
 var
   JoyThreshold: UINT;
 begin
