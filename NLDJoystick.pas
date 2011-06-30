@@ -89,7 +89,7 @@ type
   TJoyMoveEvent = procedure(Sender: TNLDJoystick; const JoyPos: TJoyRelPos;
     const Buttons: TJoyButtons) of object;
   TJoyPOVChangedEvent = procedure(Sender: TNLDJoystick;
-    const Degrees: Single) of object;
+    Degrees: Single) of object;
 
   TMMJoyMsg = packed record
     Msg: Cardinal;
@@ -156,9 +156,10 @@ type
     procedure SetInterval(Value: Cardinal);
     procedure SetThreshold(Value: Double);
   protected
-    procedure DoButtonDown(Buttons: TJoyButtons); virtual;
-    procedure DoButtonUp(Buttons: TJoyButtons); virtual;
-    procedure DoMove(JoyPos: TJoyRelPos; Buttons: TJoyButtons); virtual;
+    procedure DoButtonDown(const Buttons: TJoyButtons); virtual;
+    procedure DoButtonUp(const Buttons: TJoyButtons); virtual;
+    procedure DoMove(const JoyPos: TJoyRelPos;
+      const Buttons: TJoyButtons); virtual;
     procedure DoPOVChanged(JoyPOV: Cardinal); virtual;
     procedure WndProc(var Message: TMessage); virtual;
   public
@@ -228,6 +229,8 @@ function Joystick2: TNLDJoystick;
 begin
   if FJoystick2 = nil then
     FJoystick2 := TNLDJoystick.Create(nil);
+  if FJoystick1 = FJoystick2 then
+    FJoystick1 := nil;
   Result := FJoystick2;
 end;
 
@@ -252,11 +255,13 @@ begin
   begin
     FJoystick1 := Self;
     FID := JOYSTICKID1;
-  end else if FJoystick2 = nil then
+  end
+  else if FJoystick2 = nil then
   begin
     FJoystick2 := Self;
     FID := JOYSTICKID2;
-  end else
+  end
+  else
     raise ENLDJoystickError.Create(SErrNoJoystickAvail);
   inherited Create(AOwner);
   FInterval := 40;
@@ -277,7 +282,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TNLDJoystick.DoButtonDown(Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonDown(const Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonDown) then
     FOnButtonDown(Self, Buttons);
@@ -285,7 +290,7 @@ begin
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoButtonUp(Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonUp(const Buttons: TJoyButtons);
 begin
   if Assigned(FOnButtonUp) then
     FOnButtonUp(Self, Buttons);
@@ -293,7 +298,8 @@ begin
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoMove(JoyPos: TJoyRelPos; Buttons: TJoyButtons);
+procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos;
+  const Buttons: TJoyButtons);
 begin
   if Assigned(FOnMove) then
     FOnMove(Self, JoyPos, Buttons);
@@ -331,7 +337,7 @@ begin
   JoyInfoEx.dwSize := SizeOf(JoyInfoEx);
   JoyInfoEx.dwFlags := JOY_RETURNCENTERED;
   if (joyGetNumDevs <= FID) or
-    (joyGetPosEx(FID, @JoyInfoEx) <> JOYERR_NOERROR) then
+      (joyGetPosEx(FID, @JoyInfoEx) <> JOYERR_NOERROR) then
     Result := False
   else
   begin
@@ -363,7 +369,8 @@ begin
       FAdvanced := False;
       FHasPOV := False;
       joySetCapture(FWindowHandle, FID, 0, True);
-    end else
+    end
+    else
     begin
       FAdvanced := True;
       if JOYCAPS_HASR and JoyCaps.wCaps = JOYCAPS_HASR then
@@ -470,7 +477,8 @@ begin
             DoButtonUp(JoyButtons);
           FProcessedButtonOnce := True;
         end;
-      end else
+      end
+      else
       begin
         FPrevButtonTick := CurrentTick;
         FProcessedButtonOnce := False;
@@ -482,7 +490,8 @@ begin
           DoMove(JoyPos, JoyButtons);
           FProcessedMoveOnce := True;
         end;
-      end else
+      end
+      else
       begin
         FPrevMoveTick := CurrentTick;
         FProcessedMoveOnce := False;
@@ -578,7 +587,8 @@ begin
       joyGetDevCaps(FID, @JoyCaps, SizeOf(JoyCaps));
       FInterval := Max(JoyCaps.wPeriodMin, Min(Value, JoyCaps.wPeriodMax));
       InitTimer;
-    end else
+    end
+    else
       FInterval := 0;
   end;
 end;
