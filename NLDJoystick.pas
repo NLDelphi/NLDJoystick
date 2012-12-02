@@ -9,8 +9,8 @@
 {                                                                             }
 { *************************************************************************** }
 {                                                                             }
-{ Date: April 30, 2008                                                        }
-{ Version: 1.0.0.2                                                            }
+{ Date: December 2, 2012                                                      }
+{ Version: 1.1.0                                                              }
 {                                                                             }
 { *************************************************************************** }
 
@@ -19,41 +19,10 @@ unit NLDJoystick;
 interface
 
 uses
-  MMSystem, Windows, Messages, SysUtils, Classes;
+  MMSystem, Windows, Messages, SysUtils, Classes, Math;
 
 const
-  JoyBtn1 = 1;
-  JoyBtn2 = 2;
-  JoyBtn3 = 3;
-  JoyBtn4 = 4;
-  JoyBtn5 = 5;
-  JoyBtn6 = 6;
-  JoyBtn7 = 7;
-  JoyBtn8 = 8;
-  JoyBtn9 = 9;
-  JoyBtn10 = 10;
-  JoyBtn11 = 11;
-  JoyBtn12 = 12;
-  JoyBtn13 = 13;
-  JoyBtn14 = 14;
-  JoyBtn15 = 15;
-  JoyBtn16 = 16;
-  JoyBtn17 = 17;
-  JoyBtn18 = 18;
-  JoyBtn19 = 19;
-  JoyBtn20 = 20;
-  JoyBtn21 = 21;
-  JoyBtn22 = 22;
-  JoyBtn23 = 23;
-  JoyBtn24 = 24;
-  JoyBtn25 = 25;
-  JoyBtn26 = 26;
-  JoyBtn27 = 27;
-  JoyBtn28 = 28;
-  JoyBtn29 = 29;
-  JoyBtn30 = 30;
-  JoyBtn31 = 31;
-  JoyBtn32 = 32;
+  JOY_POVCENTERED = $FFFFFFFF;
 
 type
   TNLDJoystick = class;
@@ -78,7 +47,11 @@ type
     V: Word;
   end;
 
-  TJoyButton = JoyBtn1..JoyBtn32;
+  TJoyButton = (JoyBtn1, JoyBtn2, JoyBtn3, JoyBtn4, JoyBtn5, JoyBtn6, JoyBtn7,
+    JoyBtn8, JoyBtn9, JoyBtn10, JoyBtn11, JoyBtn12, JoyBtn13, JoyBtn14,
+    JoyBtn15, JoyBtn16, JoyBtn17, JoyBtn18, JoyBtn19, JoyBtn20, JoyBtn21,
+    JoyBtn22, JoyBtn23, JoyBtn24, JoyBtn25, JoyBtn26, JoyBtn27, JoyBtn28,
+    JoyBtn29, JoyBtn30, JoyBtn31, JoyBtn32);
   TJoyButtons = set of TJoyButton;
 
   TJoyAxis = (axX, axY, axZ, axR, axU, axV);
@@ -126,7 +99,7 @@ type
     FCenter: TJoyAbsPos;
     FHasPOV: Boolean;
     FID: TJoyID;
-    FInterval: Cardinal;
+    FInterval: Integer;
     FMax: TJoyAbsPos;
     FMin: TJoyAbsPos;
     FOnButtonDown: TJoyButtonEvent;
@@ -138,29 +111,31 @@ type
     FPrevPOV: Cardinal;
     FPrevButtonTick: Cardinal;
     FPrevMoveTick: Cardinal;
+    FPrevPOVTick: Cardinal;
     FProcessedButtonOnce: Boolean;
     FProcessedMoveOnce: Boolean;
+    FProcessedPOVOnce: Boolean;
     FRanges: TJoyRanges;
     FRepeatButtonDelay: Cardinal;
     FRepeatMoveDelay: Cardinal;
+    FRepeatPOVDelay: Cardinal;
     FSuspendScreensaver: Boolean;
     FThreshold: Double;
     FWindowHandle: HWND;
-    function GetButtons(Buttons: Cardinal): TJoyButtons;
+    function GetInterval: Integer;
     function Initialize(NeedAdvanced: Boolean = False): Boolean;
     procedure InitTimer;
     procedure ProcessAdvanced;
     procedure ProcessSimple(var Message: TMMJoyMsg);
     procedure SetActive(Value: Boolean);
     procedure SetAdvanced(Value: Boolean);
-    procedure SetInterval(Value: Cardinal);
+    procedure SetInterval(Value: Integer);
     procedure SetThreshold(Value: Double);
   protected
-    procedure DoButtonDown(const Buttons: TJoyButtons); virtual;
-    procedure DoButtonUp(const Buttons: TJoyButtons); virtual;
-    procedure DoMove(const JoyPos: TJoyRelPos;
-      const Buttons: TJoyButtons); virtual;
-    procedure DoPOVChanged(JoyPOV: Cardinal); virtual;
+    procedure DoButtonDown(Buttons: Cardinal); virtual;
+    procedure DoButtonUp(Buttons: Cardinal); virtual;
+    procedure DoMove(const JoyPos: TJoyRelPos; Buttons: Cardinal); virtual;
+    procedure DoPOVChanged(POV: Cardinal); virtual;
     procedure WndProc(var Message: TMessage); virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -182,12 +157,14 @@ type
     property OnMove: TJoyMoveEvent read FOnMove write FOnMove;
     property OnPOVChanged: TJoyPOVChangedEvent read FOnPOVChanged
       write FOnPOVChanged;
-    property PollingInterval: Cardinal read FInterval write SetInterval
+    property PollingInterval: Integer read GetInterval write SetInterval
       default 40;
     property RepeatButtonDelay: Cardinal read FRepeatButtonDelay
       write FRepeatButtonDelay default 350;
     property RepeatMoveDelay: Cardinal read FRepeatMoveDelay
       write FRepeatMoveDelay default 350;
+    property RepeatPOVDelay: Cardinal read FRepeatPOVDelay
+      write FRepeatPOVDelay default 350;
     property SuspendScreensaver: Boolean read FSuspendScreensaver
       write FSuspendScreensaver default False;
     property ThresholdFactor: Double read FThreshold write SetThreshold;
@@ -200,9 +177,6 @@ function Joystick2: TNLDJoystick;
 procedure Register;
 
 implementation
-
-uses
-  Math;
 
 procedure Register;
 begin
@@ -267,6 +241,7 @@ begin
   FInterval := 40;
   FRepeatButtonDelay := 350;
   FRepeatMoveDelay := 350;
+  FRepeatPOVDelay := 350;
   FWindowHandle := AllocateHWnd(WndProc);
   FActive := Initialize(FAdvanced);
 end;
@@ -282,62 +257,58 @@ begin
   inherited Destroy;
 end;
 
-procedure TNLDJoystick.DoButtonDown(const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonDown(Buttons: Cardinal);
 begin
   if Assigned(FOnButtonDown) then
-    FOnButtonDown(Self, Buttons);
+    FOnButtonDown(Self, TJoyButtons(Buttons));
   if FSuspendScreensaver then
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoButtonUp(const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoButtonUp(Buttons: Cardinal);
 begin
   if Assigned(FOnButtonUp) then
-    FOnButtonUp(Self, Buttons);
+    FOnButtonUp(Self, TJoyButtons(Buttons));
   if FSuspendScreensaver then
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos;
-  const Buttons: TJoyButtons);
+procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos; Buttons: Cardinal);
 begin
   if Assigned(FOnMove) then
-    FOnMove(Self, JoyPos, Buttons);
+    FOnMove(Self, JoyPos, TJoyButtons(Buttons));
   if FSuspendScreensaver then
     NotifyKeyboardActivity;
 end;
 
-procedure TNLDJoystick.DoPOVChanged(JoyPOV: Cardinal);
+procedure TNLDJoystick.DoPOVChanged(POV: Cardinal);
 begin
   if Assigned(FOnPOVChanged) then
-    FOnPOVChanged(Self, JoyPOV/100);
+    FOnPOVChanged(Self, POV/100);
   if FSuspendScreensaver then
     NotifyKeyboardActivity;
 end;
 
-function TNLDJoystick.GetButtons(Buttons: Cardinal): TJoyButtons;
-const
-  MaxButton: array[Boolean] of TJoyButton = (JoyBtn4, High(TJoyButton));
-var
-  iButton: TJoyButton;
+function TNLDJoystick.GetInterval: Integer;
 begin
-  Result := [];
-  for iButton := Low(TJoyButton) to MaxButton[FAdvanced] do
-    if (Buttons and (1 shl (iButton - 1))) <> 0 then
-      Include(Result, iButton);
+  if FAdvanced then
+    Result := FInterval
+  else
+    Result := -1;
 end;
 
 function TNLDJoystick.Initialize(NeedAdvanced: Boolean = False): Boolean;
 var
-  JoyInfoEx: TJoyInfoEx;
+  JoyInfo: TJoyInfoEx;
   JoyCaps: TJoyCaps;
 begin
   joyReleaseCapture(FID);
-  FillChar(JoyInfoEx, SizeOf(JoyInfoEx), 0);
-  JoyInfoEx.dwSize := SizeOf(JoyInfoEx);
-  JoyInfoEx.dwFlags := JOY_RETURNCENTERED;
+  ZeroMemory(@FPrevPos, SizeOf(FPrevPos));
+  ZeroMemory(@JoyInfo, SizeOf(JoyInfo));
+  JoyInfo.dwSize := SizeOf(JoyInfo);
+  JoyInfo.dwFlags := JOY_RETURNCENTERED;
   if (joyGetNumDevs <= FID) or
-      (joyGetPosEx(FID, @JoyInfoEx) <> JOYERR_NOERROR) then
+      (joyGetPosEx(FID, @JoyInfo) <> JOYERR_NOERROR) then
     Result := False
   else
   begin
@@ -345,8 +316,8 @@ begin
     FAxisCount := Min(JoyCaps.wNumAxes, JoyCaps.wMaxAxes);
     FButtonCount := Min(JoyCaps.wNumButtons, JoyCaps.wMaxButtons);
     FAxises := [axX, axY];
-    FCenter.X := JoyInfoEx.wXpos;
-    FCenter.Y := JoyInfoEx.wYpos;
+    FCenter.X := JoyInfo.wXpos;
+    FCenter.Y := JoyInfo.wYpos;
     FMax.X := JoyCaps.wXmax;
     FMax.Y := JoyCaps.wYmax;
     FMin.X := JoyCaps.wXmin;
@@ -355,10 +326,10 @@ begin
     FRanges.XUp := FMax.X - FCenter.X;
     FRanges.YDown := FCenter.Y - FMin.Y;
     FRanges.YUp := FMax.Y - FCenter.Y;
-    if JOYCAPS_HASZ and JoyCaps.wCaps = JOYCAPS_HASZ then
+    if (JOYCAPS_HASZ and JoyCaps.wCaps) = JOYCAPS_HASZ then
     begin
       Include(FAxises, axZ);
-      FCenter.Z := JoyInfoEx.wZpos;
+      FCenter.Z := JoyInfo.wZpos;
       FMax.Z := JoyCaps.wZmax;
       FMin.Z := JoyCaps.wZmin;
       FRanges.ZDown := FCenter.Z - FMin.Z;
@@ -373,34 +344,35 @@ begin
     else
     begin
       FAdvanced := True;
-      if JOYCAPS_HASR and JoyCaps.wCaps = JOYCAPS_HASR then
+      FInterval := Max(JoyCaps.wPeriodMin, Min(FInterval, JoyCaps.wPeriodMax));
+      if (JOYCAPS_HASR and JoyCaps.wCaps) = JOYCAPS_HASR then
       begin
         Include(FAxises, axR);
-        FCenter.R := JoyInfoEx.dwRpos;
+        FCenter.R := JoyInfo.dwRpos;
         FMax.R := JoyCaps.wRmax;
         FMin.R := JoyCaps.wRmin;
         FRanges.RDown := FCenter.R - FMin.R;
         FRanges.RUp := FMax.R - FCenter.R;
       end;
-      if JOYCAPS_HASU and JoyCaps.wCaps = JOYCAPS_HASU then
+      if (JOYCAPS_HASU and JoyCaps.wCaps) = JOYCAPS_HASU then
       begin
         Include(FAxises, axU);
-        FCenter.U := JoyInfoEx.dwUpos;
+        FCenter.U := JoyInfo.dwUpos;
         FMax.U := JoyCaps.wUmax;
         FMin.U := JoyCaps.wUmin;
         FRanges.UDown := FCenter.U - FMin.U;
         FRanges.UUp := FMax.U - FCenter.U;
       end;
-      if JOYCAPS_HASV and JoyCaps.wCaps = JOYCAPS_HASV then
+      if (JOYCAPS_HASV and JoyCaps.wCaps) = JOYCAPS_HASV then
       begin
         Include(FAxises, axV);
-        FCenter.V := JoyInfoEx.dwVpos;
+        FCenter.V := JoyInfo.dwVpos;
         FMax.V := JoyCaps.wVmax;
         FMin.V := JoyCaps.wVmin;
         FRanges.VDown := FCenter.V - FMin.V;
         FRanges.VUp := FMax.V - FCenter.V;
       end;
-      FHasPOV := JOYCAPS_HASPOV and JoyCaps.wCaps = JOYCAPS_HASPOV;
+      FHasPOV := (JOYCAPS_HASPOV and JoyCaps.wCaps) = JOYCAPS_HASPOV;
       InitTimer;
     end;
     Result := True;
@@ -421,21 +393,18 @@ const
     JOY_RETURNBUTTONS;
   CenterJoyPos: TJoyRelPos = (X:0.0; Y:0.0; Z:0.0; R:0.0; U:0.0; V:0.0);
 var
-  JoyInfoEx: TJoyInfoEx;
+  JoyInfo: TJoyInfoEx;
   JoyPos: TJoyRelPos;
-  JoyButtons: TJoyButtons;
   CurrentTick: Cardinal;
-  MustDelayButton: Boolean;
-  MustDelayMove: Boolean;
+  MustDelay: Boolean;
 begin
-  FillChar(JoyInfoEx, SizeOf(TJoyInfoEx), 0);
-  JoyInfoEx.dwSize := SizeOf(TJoyInfoEx);
-  JoyInfoEx.dwFlags := JOY_RETURN;
-  if joyGetPosEx(FID, @JoyInfoEx) = JOYERR_NOERROR then
-    with JoyInfoEx do
+  ZeroMemory(@JoyInfo, SizeOf(JoyInfo));
+  JoyInfo.dwSize := SizeOf(JoyInfo);
+  JoyInfo.dwFlags := JOY_RETURN;
+  if joyGetPosEx(FID, @JoyInfo) = JOYERR_NOERROR then
+    with JoyInfo do
     begin
-      JoyButtons := GetButtons(wButtons);
-      FillChar(JoyPos, SizeOf(TJoyRelPos), 0);
+      JoyPos := FPrevPos;
       if LoWord(wXpos) < FCenter.X then
         JoyPos.X := (LoWord(wXpos) - FCenter.X) / FRanges.XDown
       else
@@ -465,16 +434,15 @@ begin
         else
           JoyPos.V := (LoWord(dwVpos) - FCenter.V) / FRanges.VUp;
       CurrentTick := GetTickCount;
-      MustDelayButton := CurrentTick < FPrevButtonTick + FRepeatButtonDelay;
-      MustDelayMove := CurrentTick < FPrevMoveTick + FRepeatMoveDelay;
-      if wButtons > 0 then
+      MustDelay := CurrentTick < FPrevButtonTick + FRepeatButtonDelay;
+      if (wButtons > 0) or (wButtons <> FPrevButtons) then
       begin
-        if (not MustDelayButton) or (not FProcessedButtonOnce) then
+        if (not MustDelay) or (not FProcessedButtonOnce) then
         begin
-          if FPrevButtons < wButtons then
-            DoButtonDown(JoyButtons)
+          if wButtons >= FPrevButtons then
+            DoButtonDown(wButtons)
           else
-            DoButtonUp(JoyButtons);
+            DoButtonUp(wButtons);
           FProcessedButtonOnce := True;
         end;
       end
@@ -483,11 +451,13 @@ begin
         FPrevButtonTick := CurrentTick;
         FProcessedButtonOnce := False;
       end;
+      FPrevButtons := wButtons;
+      MustDelay := CurrentTick < FPrevMoveTick + FRepeatMoveDelay;
       if not CompareMem(@JoyPos, @CenterJoyPos, SizeOf(TJoyRelPos)) then
       begin
-        if (not MustDelayMove) or (not FProcessedMoveOnce) then
+        if (not MustDelay) or (not FProcessedMoveOnce) then
         begin
-          DoMove(JoyPos, JoyButtons);
+          DoMove(JoyPos, wButtons);
           FProcessedMoveOnce := True;
         end;
       end
@@ -496,11 +466,22 @@ begin
         FPrevMoveTick := CurrentTick;
         FProcessedMoveOnce := False;
       end;
-      if FHasPOV and (dwPOV <> FPrevPOV) then
+      FPrevPos := JoyPos;
+      MustDelay := CurrentTick < FPrevPOVTick + FRepeatPOVDelay;
+      if FHasPOV and ((dwPOV <> JOY_POVCENTERED) or (dwPOV <> FPrevPOV)) then
       begin
-        FPrevPOV := dwPOV;
-        DoPOVChanged(dwPOV);
+        if (not MustDelay) or (not FProcessedPOVOnce) then
+        begin
+          DoPOVChanged(dwPOV);
+          FProcessedPOVOnce := True;
+        end;
+      end
+      else
+      begin
+        FPrevPOVTick := CurrentTick;
+        FProcessedPOVOnce := False;
       end;
+      FPrevPOV := dwPOV;
     end;
 end;
 
@@ -511,13 +492,9 @@ begin
   with Message do
     case Msg of
       MM_JOY1BUTTONDOWN, MM_JOY2BUTTONDOWN:
-        begin
-          DoButtonDown(GetButtons(Buttons));
-        end;
+        DoButtonDown(Buttons);
       MM_JOY1BUTTONUP, MM_JOY2BUTTONUP:
-        begin
-          DoButtonUp(GetButtons(Buttons));
-        end;
+        DoButtonUp(Buttons);
       MM_JOY1MOVE, MM_JOY2MOVE:
         begin
           JoyPos := FPrevPos;
@@ -530,7 +507,7 @@ begin
           else
             JoyPos.Y := (YPos - FCenter.Y) / FRanges.YUp;
           FPrevPos := JoyPos;
-          DoMove(JoyPos, GetButtons(Buttons));
+          DoMove(JoyPos, Buttons);
         end;
       MM_JOY1ZMOVE, MM_JOY2ZMOVE:
         begin
@@ -540,7 +517,7 @@ begin
           else
             JoyPos.Z := (XZPos - FCenter.Z) / FRanges.ZUp;
           FPrevPos := JoyPos;
-          DoMove(JoyPos, GetButtons(Buttons));
+          DoMove(JoyPos, Buttons);
         end;
       else
         Dispatch(Message);
@@ -576,7 +553,7 @@ begin
   end;
 end;
 
-procedure TNLDJoystick.SetInterval(Value: Cardinal);
+procedure TNLDJoystick.SetInterval(Value: Integer);
 var
   JoyCaps: TJoyCaps;
 begin
