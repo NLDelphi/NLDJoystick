@@ -9,8 +9,8 @@
 {                                                                             }
 { *************************************************************************** }
 {                                                                             }
-{ Date: December 2, 2012                                                      }
-{ Version: 1.1.0                                                              }
+{ Date: Januar 21, 2013                                                       }
+{ Version: 1.2.0                                                              }
 {                                                                             }
 { *************************************************************************** }
 
@@ -104,13 +104,15 @@ type
     FMin: TJoyAbsPos;
     FOnButtonDown: TJoyButtonEvent;
     FOnButtonUp: TJoyButtonEvent;
+    FOnIdle: TNotifyEvent;
     FOnMove: TJoyMoveEvent;
     FOnPOVChanged: TJoyPOVChangedEvent;
     FPrevButtons: UINT;
+    FPrevButtonTick: Cardinal;
+    FPrevIdleTick: Cardinal;
+    FPrevMoveTick: Cardinal;
     FPrevPos: TJoyRelPos;
     FPrevPOV: Cardinal;
-    FPrevButtonTick: Cardinal;
-    FPrevMoveTick: Cardinal;
     FPrevPOVTick: Cardinal;
     FProcessedButtonOnce: Boolean;
     FProcessedMoveOnce: Boolean;
@@ -134,6 +136,7 @@ type
   protected
     procedure DoButtonDown(Buttons: Cardinal); virtual;
     procedure DoButtonUp(Buttons: Cardinal); virtual;
+    procedure DoIdle; virtual;
     procedure DoMove(const JoyPos: TJoyRelPos; Buttons: Cardinal); virtual;
     procedure DoPOVChanged(POV: Cardinal); virtual;
     procedure WndProc(var Message: TMessage); virtual;
@@ -154,6 +157,7 @@ type
     property OnButtonDown: TJoyButtonEvent read FOnButtonDown
       write FOnButtonDown;
     property OnButtonUp: TJoyButtonEvent read FOnButtonUp write FOnButtonUp;
+    property OnIdle: TNotifyEvent read FOnIdle write FOnIdle;
     property OnMove: TJoyMoveEvent read FOnMove write FOnMove;
     property OnPOVChanged: TJoyPOVChangedEvent read FOnPOVChanged
       write FOnPOVChanged;
@@ -271,6 +275,12 @@ begin
     FOnButtonUp(Self, TJoyButtons(Buttons));
   if FSuspendScreensaver then
     NotifyKeyboardActivity;
+end;
+
+procedure TNLDJoystick.DoIdle;
+begin
+  if Assigned(FOnIdle) then
+    FOnIdle(Self);
 end;
 
 procedure TNLDJoystick.DoMove(const JoyPos: TJoyRelPos; Buttons: Cardinal);
@@ -404,6 +414,17 @@ begin
   if joyGetPosEx(FID, @JoyInfo) = JOYERR_NOERROR then
     with JoyInfo do
     begin
+      if (FPrevIdleTick = 0) and (LoWord(wXpos) = FCenter.X) and
+        (LoWord(wYpos) = FCenter.Y) and (LoWord(wZpos) = FCenter.Z) and
+        (LoWord(dwRpos) = FCenter.R) and (LoWord(dwUpos) = FCenter.U) and
+        (LoWord(dwVpos) = FCenter.V) and (wButtons = 0) and
+        ((not FHasPOV) or (dwPOV = JOY_POVCENTERED)) then
+      begin
+        FPrevIdleTick := GetTickCount;
+        DoIdle;
+      end
+      else
+        FPrevIdleTick := 0;
       JoyPos := FPrevPos;
       if LoWord(wXpos) < FCenter.X then
         JoyPos.X := (LoWord(wXpos) - FCenter.X) / FRanges.XDown
