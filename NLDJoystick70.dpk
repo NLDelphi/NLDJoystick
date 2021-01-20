@@ -2,6 +2,7 @@ package NLDJoystick70;
 
 {$R *.res}
 {$R 'NLDjoystick.dcr'}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS OFF}
 {$BOOLEVAL OFF}
@@ -23,6 +24,8 @@ package NLDJoystick70;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE RELEASE}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'NLDJoystick'}
 {$IMPLICITBUILD OFF}
 

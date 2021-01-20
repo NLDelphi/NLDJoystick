@@ -5,12 +5,7 @@
 { Initiator: Albert de Weerd (aka NGLN)                                       }
 { License: Free to use, free to modify                                        }
 { Website: http://www.nldelphi.com/Forum/showthread.php?t=29812               }
-{ SVN path: http://svn.nldelphi.com/nldelphi/opensource/ngln/NLDJoystick      }
-{                                                                             }
-{ *************************************************************************** }
-{                                                                             }
-{ Date: Januar 21, 2013                                                       }
-{ Version: 1.2.0                                                              }
+{ Source path: https://github.com/NLDelphi/NLDJoystick                        }
 {                                                                             }
 { *************************************************************************** }
 
@@ -19,7 +14,12 @@ unit NLDJoystick;
 interface
 
 uses
-  MMSystem, Windows, Messages, SysUtils, Classes, Math;
+  Winapi.MMSystem,
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Classes,
+  System.Math;
 
 const
   JOY_POVCENTERED = $FFFFFFFF;
